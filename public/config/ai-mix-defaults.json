@@ -1,0 +1,32 @@
+{
+  "dingTalk": {
+    "actions": [
+      {
+        "type": "input",
+        "aiConfig": {
+          "promptTemplate": "{content}"
+        }
+      }
+    ]
+  },
+  "gitLab": {
+    "actions": [
+      {
+        "type": "input",
+        "aiConfig": {
+          "promptTemplate": "{mrTitle}\n{mrUrl}"
+        }
+      }
+    ]
+  },
+  "jira": {
+    "actions": [
+      {
+        "type": "input",
+        "aiConfig": {
+          "promptTemplate": "分析并修复解决以下提案中的问题：\n\n## Jira Issue 信息\n\n### 标题\n{title}\n\n### 环境信息\n{environment}\n\n### 描述\n{description}"
+        }
+      }
+    ]
+  }
+}

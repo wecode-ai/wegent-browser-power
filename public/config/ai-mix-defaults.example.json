@@ -1,0 +1,56 @@
+{
+  "dingTalk": {
+    "actions": [
+      {
+        "type": "action",
+        "buttonLabel": "AI技术评估",
+        "aiConfig": {
+          "promptTemplate": "对该需求需要进行方案设计和代码编写，输出。里面的图片需要识别内容，增强需求理解。 需求如下：{content}",
+          "model": "your-group-name#your-model-name"
+        }
+      },
+      {
+        "type": "action",
+        "buttonLabel": "AI文档评审",
+        "aiConfig": {
+          "promptTemplate": "评审需求文档：{content}",
+          "model": "your-group-name#your-model-name"
+        }
+      },
+      {
+        "type": "input",
+        "aiConfig": {
+          "promptTemplate": "{content}"
+        }
+      }
+    ]
+  },
+  "gitLab": {
+    "actions": [
+      {
+        "type": "action",
+        "buttonLabel": "AI协助Review",
+        "aiConfig": {
+          "promptTemplate": "{mrTitle}\n使用skill your_skill_name 协助人类 code review\n{mrUrl}",
+          "model": "your-model-name",
+          "tools": [
+            {
+              "type": "skill",
+              "preload_skills": ["your_skill_name"]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "jira": {
+    "actions": [
+      {
+        "type": "input",
+        "aiConfig": {
+          "promptTemplate": "分析并修复解决以下提案中的问题：\n\n## Jira Issue 信息\n\n### 标题\n{title}\n\n### 环境信息\n{environment}\n\n### 描述\n{description}"
+        }
+      }
+    ]
+  }
+}
