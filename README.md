@@ -1,70 +1,71 @@
 # Wegent Browser Power
 
-Wegent Browser Power is an embedded AI productivity plugin designed for developers and product managers. By seamlessly integrating core work platforms like GitLab, Jira, and DingTalk directly into the browser, it breaks down barriers between tools and delivers AI capabilities right where you work.
+**中文** | [English](README.en.md)
 
-Powered by Wegent AI's advanced large language model, this tool aims to empower the entire product development and research workflow.
+Wegent Browser Power 是一款专为开发者与产品经理打造的嵌入式 AI 提效插件。它通过在浏览器端无缝集成 GitLab、Jira、钉钉等核心办公平台，打破工具间的壁垒，实现 AI 能力的直达。
 
-**English** | [中文](README_zh.md)
+基于 Wegent AI 强大的大模型底座，本工具致力于赋能产研全流程。
 
-## Installation (Official Store)
+## 安装使用（官方商店）
 
-Chrome Web Store
+Chrome 应用商店
 
 https://chromewebstore.google.com/detail/wegent-browser-power/ambidpbogbcdlephgniokkakghccheoi
 
-## Installation (Build from Source)
+## 安装使用（源代码编译）
 
-Ensure Node.js version >= v24 and pnpm is installed.
+确保 Node.js 版本 >= v24，并安装 pnpm。
 
-### Clone Release Version
+### 克隆发布版本
 
 ```bash
 git clone https://github.com/wecode-ai/wegent-browser-power.git
 pnpm build
 ```
 
-### Load Extension in Chrome
+### 加载扩展到 Chrome
 
-1. Open Chrome browser and visit `chrome://extensions/`
-2. Enable "Developer mode" in the top right corner
-3. Click "Load unpacked" button
-4. Select the `.output/chrome-mv3` folder in the project directory
+1. 打开 Chrome 浏览器，访问 `chrome://extensions/`
+2. 在右上角启用"开发者模式"
+3. 点击"加载已解压的扩展程序"按钮
+4. 选择项目目录下的 `.output/chrome-mv3` 文件夹
 
-### Update Extension
+### 更新扩展
 
-Pull the latest code:
+直接拉取最新代码：
 
 ```bash
 git pull
 ```
 
-After updating, refresh the Chrome extensions page to use the latest version.
+更新后刷新 Chrome 扩展页面即可使用最新版本。
 
-## Recommended IDE Setup
+
+## 推荐的 IDE 设置
 
 - [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
 
-## Development
+## 开发方式
 
-### Prerequisites
+### 前置要求
 
-- Node.js version >= v24
+- Node.js 版本 >= v24
 - pnpm
 
-### Getting Started
+### 开始调试
 
-1. Install dependencies:
+1. 安装依赖：
    ```bash
    pnpm install
    ```
 
-2. Start development server:
+2. 启动开发服务器：
    ```bash
    pnpm dev
    ```
 
-3. Load extension in Chrome:
-   - Open Chrome browser and visit `chrome://extensions/`
-   - Enable "Developer mode" in the top right corner
-   - Click "Load unpacked" button
-   - Select the `.output/chrome-mv3-dev` folder in the project root directory
+3. 在 Chrome 中加载扩展：
+   - 打开 Chrome 浏览器，访问 `chrome://extensions/`
+   - 在右上角启用"开发者模式"
+   - 点击"加载已解压的扩展程序"按钮
+   - 选择项目根目录下的 `.output/chrome-mv3-dev` 文件夹
