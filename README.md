@@ -39,24 +39,20 @@ Wegent Browser Power 通过在浏览器端无缝集成 **GitLab**、**Jira**、*
 ## 📸 使用截图
 
 ### 登录配置
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-login.png" alt="登录配置" width="400" />
-</p>
+
+![登录配置](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-login.png)
 
 ### GitLab 集成
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-gitlab.png" alt="GitLab 集成" width="500" />
-</p>
+
+![GitLab 集成](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-gitlab.png)
 
 ### Jira 集成
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-jira.png" alt="Jira 集成" width="500" />
-</p>
+
+![Jira 集成](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-jira.png)
 
 ### 钉钉文档集成
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-dingtalk.png" alt="钉钉文档集成" width="500" />
-</p>
+
+![钉钉文档集成](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-dingtalk.png)
 
 ## 📚 更多文档
 

@@ -39,24 +39,20 @@ Go to [Chrome Web Store](https://chromewebstore.google.com/detail/wegent-browser
 ## 📸 Screenshots
 
 ### Login Configuration
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-login.png" alt="Login Configuration" width="400" />
-</p>
+
+![Login Configuration](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-login.png)
 
 ### GitLab Integration
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-gitlab.png" alt="GitLab Integration" width="500" />
-</p>
+
+![GitLab Integration](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-gitlab.png)
 
 ### Jira Integration
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-jira.png" alt="Jira Integration" width="500" />
-</p>
+
+![Jira Integration](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-jira.png)
 
 ### DingTalk Document Integration
-<p align="center">
-  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-dingtalk.png" alt="DingTalk Document Integration" width="500" />
-</p>
+
+![DingTalk Document Integration](https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-dingtalk.png)
 
 ## 📚 More Documentation
 
