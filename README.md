@@ -1,71 +1,71 @@
-# Wegent Browser Power
+<p align="center">
+  <a href="https://github.com/wecode-ai/wegent-browser-power" target="_blank">
+    <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/logo-300.png" alt="Wegent Browser Power Logo" width="120" />
+  </a>
+</p>
 
-**中文** | [English](README.en.md)
+<h1 align="center">Wegent Browser Power</h1>
 
-Wegent Browser Power 是一款专为开发者与产品经理打造的嵌入式 AI 提效插件。它通过在浏览器端无缝集成 GitLab、Jira、钉钉等核心办公平台，打破工具间的壁垒，实现 AI 能力的直达。
+<p align="center">
+  <b>专为开发者与产品经理打造的嵌入式 AI 提效插件</b>
+</p>
+
+<p align="center">
+  <strong>中文</strong> | <a href="README.en.md">English</a>
+</p>
+
+---
+
+## ✨ 功能介绍
+
+Wegent Browser Power 通过在浏览器端无缝集成 **GitLab**、**Jira**、**钉钉** 等核心办公平台，打破工具间的壁垒，实现 AI 能力的直达。
 
 基于 Wegent AI 强大的大模型底座，本工具致力于赋能产研全流程。
 
-## 安装使用（官方商店）
+## 📦 安装使用
 
-Chrome 应用商店
+### Chrome 应用商店（推荐）
 
-https://chromewebstore.google.com/detail/wegent-browser-power/ambidpbogbcdlephgniokkakghccheoi
+前往 [Chrome 应用商店](https://chromewebstore.google.com/detail/wegent-browser-power/ambidpbogbcdlephgniokkakghccheoi) 点击 **"添加到 Chrome"** 按钮并确认安装。
 
-## 安装使用（源代码编译）
+## 🔧 安装后配置
 
-确保 Node.js 版本 >= v24，并安装 pnpm。
+1. 点击 Chrome 工具栏中的扩展图标，打开设置面板
+2. 配置 API：
+   - **自动配置**：浏览器打开 Wegent，点击插件图标 > `自动配置` 按钮（推荐）
+   - **手动配置**：输入 Wegent API 地址和 API Key
+3. （可选）进入扩展选项页面，自定义钉钉、GitLab、Jira 的 AI 操作
 
-### 克隆发布版本
+## 📸 使用截图
 
-```bash
-git clone https://github.com/wecode-ai/wegent-browser-power.git
-pnpm build
-```
+### 登录配置
+<p align="center">
+  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-login.png" alt="登录配置" width="400" />
+</p>
 
-### 加载扩展到 Chrome
+### GitLab 集成
+<p align="center">
+  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-gitlab.png" alt="GitLab 集成" width="500" />
+</p>
 
-1. 打开 Chrome 浏览器，访问 `chrome://extensions/`
-2. 在右上角启用"开发者模式"
-3. 点击"加载已解压的扩展程序"按钮
-4. 选择项目目录下的 `.output/chrome-mv3` 文件夹
+### Jira 集成
+<p align="center">
+  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-jira.png" alt="Jira 集成" width="500" />
+</p>
 
-### 更新扩展
+### 钉钉文档集成
+<p align="center">
+  <img src="https://github.com/wecode-ai/wegent-browser-power/wiki/assets/screenshot-dingtalk.png" alt="钉钉文档集成" width="500" />
+</p>
 
-直接拉取最新代码：
+## 📚 更多文档
 
-```bash
-git pull
-```
+- [安装使用指南](https://github.com/wecode-ai/wegent-browser-power/wiki/安装使用)
+- [高级使用指南](https://github.com/wecode-ai/wegent-browser-power/wiki/高级使用) - 为钉钉、GitLab 和 Jira 配置自定义 AI 操作
+- [开发指南](https://github.com/wecode-ai/wegent-browser-power/wiki/开发指南) - 搭建开发环境并参与贡献
 
-更新后刷新 Chrome 扩展页面即可使用最新版本。
+## 🔗 相关链接
 
-
-## 推荐的 IDE 设置
-
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
-
-## 开发方式
-
-### 前置要求
-
-- Node.js 版本 >= v24
-- pnpm
-
-### 开始调试
-
-1. 安装依赖：
-   ```bash
-   pnpm install
-   ```
-
-2. 启动开发服务器：
-   ```bash
-   pnpm dev
-   ```
-
-3. 在 Chrome 中加载扩展：
-   - 打开 Chrome 浏览器，访问 `chrome://extensions/`
-   - 在右上角启用"开发者模式"
-   - 点击"加载已解压的扩展程序"按钮
-   - 选择项目根目录下的 `.output/chrome-mv3-dev` 文件夹
+- [Chrome Web Store](https://chromewebstore.google.com/detail/wegent-browser-power/ambidpbogbcdlephgniokkakghccheoi)
+- [GitHub 仓库](https://github.com/wecode-ai/wegent-browser-power)
+- [问题反馈与功能请求](https://github.com/wecode-ai/wegent-browser-power/issues)
