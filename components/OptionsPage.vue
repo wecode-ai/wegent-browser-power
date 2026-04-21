@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import {
   NCard,
   NForm,
@@ -14,7 +14,7 @@ import {
   NRadio,
   useMessage,
 } from 'naive-ui';
-import { getConfig, saveConfig } from '@/services/config';
+import { getConfig, saveConfig, saveSubscriptionUrl, getSubscriptionUrl } from '@/services/config';
 import {
   getAIMixConfig,
   importAIMixConfig,
@@ -30,9 +30,17 @@ const url = ref('');
 const apiKey = ref('');
 const configMessage = ref('');
 
+// 订阅 URL
+const subscriptionUrl = ref('');
+const subscriptionStatus = ref<'idle' | 'loading' | 'success' | 'error'>('idle');
+const subscriptionError = ref('');
+
 // AI Mix 配置
 const aiMixJson = ref('');
 const importMode = ref<'merge' | 'replace'>('merge');
+
+// 当填写了订阅 URL 时，JSON 编辑器只读
+const isAiMixReadonly = computed(() => !!subscriptionUrl.value.trim());
 
 // 加载配置
 const loadConfig = async () => {
@@ -41,9 +49,36 @@ const loadConfig = async () => {
   url.value = config.wegent_url || '';
   apiKey.value = config.wegent_api_key || '';
 
+  // 加载订阅 URL
+  subscriptionUrl.value = await getSubscriptionUrl();
+
   // 加载 AI Mix 配置（优先本地存储，无则加载默认配置）
   const aiMixConfig = await getAIMixConfig();
   aiMixJson.value = JSON.stringify(aiMixConfig, null, 2);
+};
+
+// 拉取订阅配置（通过 background script 绕过 CORS）
+const fetchSubscription = async (subUrl: string): Promise<boolean> => {
+  subscriptionStatus.value = 'loading';
+  subscriptionError.value = '';
+  try {
+    const resp = await browser.runtime.sendMessage({
+      action: 'fetchSubscription',
+      url: subUrl,
+    }) as { success: boolean; error?: string };
+    if (!resp.success) {
+      throw new Error(resp.error || '未知错误');
+    }
+    subscriptionStatus.value = 'success';
+    // 重新加载 AI Mix 配置展示
+    const aiMixConfig = await getAIMixConfig();
+    aiMixJson.value = JSON.stringify(aiMixConfig, null, 2);
+    return true;
+  } catch (error) {
+    subscriptionStatus.value = 'error';
+    subscriptionError.value = (error as Error).message;
+    return false;
+  }
 };
 
 // 保存原有配置
@@ -58,10 +93,24 @@ const handleSubmit = async () => {
       wegent_url: url.value,
       wegent_api_key: apiKey.value
     });
-    configMessage.value = '保存成功';
 
+    // 同步保存订阅 URL
+    await saveSubscriptionUrl(subscriptionUrl.value.trim());
+
+    configMessage.value = '保存成功';
     url.value = '';
     apiKey.value = '';
+
+    // 如果填写了订阅 URL，立即拉取一次
+    const subUrl = subscriptionUrl.value.trim();
+    if (subUrl) {
+      const ok = await fetchSubscription(subUrl);
+      if (ok) {
+        message.success('订阅配置已更新');
+      } else {
+        message.error('订阅配置拉取失败: ' + subscriptionError.value);
+      }
+    }
   } catch (error) {
     configMessage.value = '保存失败' + error;
   }
@@ -122,6 +171,15 @@ onMounted(loadConfig);
               />
             </NFormItem>
 
+            <NFormItem label="订阅URL">
+              <NInput
+                v-model:value="subscriptionUrl"
+                placeholder="可选，填写后 AI Mix 配置将由此 URL 远程管理（支持 http / https）"
+                size="large"
+                clearable
+              />
+            </NFormItem>
+
             <NButton
               type="primary"
               size="large"
@@ -144,8 +202,22 @@ onMounted(loadConfig);
         <!-- AI Mix 配置管理 -->
         <NText strong>AI Mix 配置管理</NText>
 
+        <!-- 订阅模式提示 -->
+        <NAlert
+          v-if="isAiMixReadonly"
+          type="info"
+          title="当前配置由订阅 URL 管理，不可手动编辑"
+          :description="`订阅地址：${subscriptionUrl}`"
+        />
+        <NAlert
+          v-if="subscriptionStatus === 'error'"
+          type="error"
+          :title="`订阅配置拉取失败：${subscriptionError}`"
+        />
+
         <NSpace vertical :size="16">
-          <NRadioGroup v-model:value="importMode">
+          <!-- 非订阅模式才显示合并/替换选项 -->
+          <NRadioGroup v-if="!isAiMixReadonly" v-model:value="importMode">
             <NSpace>
               <NRadio value="merge">合并（不影响其他配置）</NRadio>
               <NRadio value="replace">替换（完全覆盖）</NRadio>
@@ -160,10 +232,12 @@ onMounted(loadConfig);
               :rows="20"
               placeholder="AI Mix 配置 JSON"
               style="font-family: monospace;"
+              :disabled="isAiMixReadonly"
             />
           </NFormItem>
 
-          <NSpace>
+          <!-- 非订阅模式才显示操作按钮 -->
+          <NSpace v-if="!isAiMixReadonly">
             <NButton type="primary" @click="handleImport">保存</NButton>
             <NButton type="error" @click="handleReset">重置为默认</NButton>
           </NSpace>

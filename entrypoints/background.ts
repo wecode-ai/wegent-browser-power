@@ -1,4 +1,4 @@
-import { saveConfig } from '@/services/config';
+import { saveConfig, getSubscriptionUrl, applySubscriptionData, type AIMixConfig } from '@/services/config';
 
 export default defineBackground(() => {
   console.log('Hello background!', { id: browser.runtime.id });
@@ -11,6 +11,10 @@ export default defineBackground(() => {
   // 监听扩展启动事件
   browser.runtime.onStartup.addListener(() => {
     console.log('Extension started');
+    // 浏览器启动时自动拉取订阅配置
+    fetchSubscriptionConfig().catch(err =>
+      console.error('启动时拉取订阅配置失败:', err)
+    );
   });
 
   // 监听来自 popup 的消息
@@ -28,6 +32,12 @@ export default defineBackground(() => {
       return true; // 保持消息通道开放以支持异步响应
     }
 
+    // 拉取订阅 URL 并更新 AI Mix 配置
+    if (message.action === 'fetchSubscription') {
+      handleFetchSubscription(message.url).then(sendResponse);
+      return true;
+    }
+
     // 启动钉钉Markdown下载监听事件
     if (message.action === 'waitForDingMarkdownDownload') {
       handleDingMarkdownDownload(message.origin).then(sendResponse);
@@ -40,6 +50,39 @@ export default defineBackground(() => {
       return true; // 保持消息通道开放以支持异步响应
     }
   });
+
+  // 从订阅 URL 拉取并应用 AI Mix 配置
+  // Background Service Worker 拥有扩展 Host Permission，fetch 不受目标服务器 CORS 限制
+  async function handleFetchSubscription(url: string) {
+    try {
+      console.log('开始拉取订阅配置:', url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = (await response.json()) as AIMixConfig;
+      // 简单校验：至少包含一个已知平台字段
+      if (!data || (!data.dingTalk && !data.gitLab && !data.jira)) {
+        throw new Error('订阅数据格式错误：缺少 dingTalk / gitLab / jira 字段');
+      }
+      await applySubscriptionData(data);
+      console.log('订阅配置已更新');
+      return { success: true };
+    } catch (error) {
+      console.error('拉取订阅配置失败:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  // 在后台静默拉取订阅配置（不要求成功）
+  async function fetchSubscriptionConfig() {
+    const url = await getSubscriptionUrl();
+    if (!url) return;
+    await handleFetchSubscription(url);
+  }
 
   // 自动配置函数
   async function handleAutoConfig(currentUrl: string) {
