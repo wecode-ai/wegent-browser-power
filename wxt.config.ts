@@ -4,7 +4,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   manifest: {
-    permissions: ['storage', 'tabs', 'scripting', 'notifications', 'downloads'],
+    permissions: ['storage', 'tabs', 'scripting', 'notifications', 'downloads', 'alarms'],
     host_permissions: ['https://alidocs.dingtalk.com/*'],
     optional_host_permissions: ['https://*/*', 'http://*/*'],
   },

@@ -1,20 +1,54 @@
 import { saveConfig, getSubscriptionUrl, applySubscriptionData, type AIMixConfig } from '@/services/config';
 
+/** 订阅配置定时轮询的 Alarm 名称 */
+const SUBSCRIPTION_ALARM_NAME = 'subscription-config-sync';
+
+/** 轮询间隔（分钟），6 小时 */
+const SUBSCRIPTION_ALARM_INTERVAL_MINUTES = 6 * 60;
+
 export default defineBackground(() => {
   console.log('Hello background!', { id: browser.runtime.id });
-  
+
+  // 注册/恢复定时轮询 Alarm
+  // Alarm 在 Service Worker 休眠期间由系统维护，唤醒后自动触发
+  const ensureAlarm = async () => {
+    const existing = await browser.alarms.get(SUBSCRIPTION_ALARM_NAME);
+    if (!existing) {
+      browser.alarms.create(SUBSCRIPTION_ALARM_NAME, {
+        periodInMinutes: SUBSCRIPTION_ALARM_INTERVAL_MINUTES,
+      });
+      console.log(`订阅轮询 Alarm 已注册，间隔 ${SUBSCRIPTION_ALARM_INTERVAL_MINUTES} 分钟`);
+    }
+  };
+
   // 监听扩展安装或更新事件
   browser.runtime.onInstalled.addListener(() => {
     console.log('Extension installed or updated');
+    ensureAlarm();
+    // 安装/更新时立即拉取一次，确保第一次使用即最新配置
+    fetchSubscriptionConfig().catch(err =>
+      console.error('安装/更新时拉取订阅配置失败:', err)
+    );
   });
 
   // 监听扩展启动事件
   browser.runtime.onStartup.addListener(() => {
     console.log('Extension started');
+    ensureAlarm();
     // 浏览器启动时自动拉取订阅配置
     fetchSubscriptionConfig().catch(err =>
       console.error('启动时拉取订阅配置失败:', err)
     );
+  });
+
+  // 监听定时 Alarm，触发订阅配置轮询
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === SUBSCRIPTION_ALARM_NAME) {
+      console.log('定时轮询触发，开始拉取订阅配置');
+      fetchSubscriptionConfig().catch(err =>
+        console.error('定时轮询拉取订阅配置失败:', err)
+      );
+    }
   });
 
   // 监听来自 popup 的消息
