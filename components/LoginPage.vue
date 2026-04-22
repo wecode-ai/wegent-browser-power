@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { h, ref, computed, onMounted } from 'vue';
 import {
   NCard,
   NForm,
@@ -9,8 +9,11 @@ import {
   NSpace,
   NAlert,
   NText,
+  useDialog,
 } from 'naive-ui';
 import { getConfig, saveConfig, saveSubscriptionUrl } from '@/services/config';
+
+const dialog = useDialog();
 
 const url = ref('');
 const apiKey = ref('');
@@ -18,8 +21,6 @@ const message = ref('');
 const currentHostname = ref('');
 const isAutoConfiguring = ref(false);
 const hasDomainPermission = ref(false);
-// 控制"如何使用自动配置"内联提示的显示
-const showAutoConfigHint = ref(false);
 
 const emit = defineEmits<{
   loginSuccess: []
@@ -77,27 +78,50 @@ const handleAutoConfig = async () => {
 
   // ── 情况一：URL 输入框有内容，使用输入的地址执行自动配置 ──
   if (rawInput) {
-    showAutoConfigHint.value = false;
+    // 用字符串分割处理 # 分隔符（new URL() 会把 # 后的内容当 hash 而非独立 URL）
+    const hashIdx = rawInput.indexOf('#');
+    const wegentRaw = hashIdx !== -1 ? rawInput.slice(0, hashIdx) : rawInput;
+    const subscriptionRaw = hashIdx !== -1 ? rawInput.slice(hashIdx + 1).trim() : '';
+
+    // ── 前置同步校验（不启动 loading，保持 UX 轻量）──
+    let wegentUrlObj: URL;
+    try {
+      wegentUrlObj = new URL(wegentRaw);
+    } catch {
+      message.value = '自动配置失败：URL 格式无效，请输入以 https:// 或 http:// 开头的地址';
+      return;
+    }
+    if (!wegentUrlObj.hostname.startsWith('wegent.')) {
+      message.value = '自动配置失败：请输入 wegent.* 域名的地址（例如 https://wegent.xxx.com）';
+      return;
+    }
+
+    // 当前 Tab 已在 wegent.* 域名时，禁止与输入地址不一致的操作
+    if (isWegentDomain.value && wegentUrlObj.hostname !== currentHostname.value) {
+      dialog.warning({
+        title: '域名不一致',
+        content: () => h('div', { style: 'line-height: 1.8; font-size: 13px;' }, [
+          h('p', { style: 'margin: 0 0 6px;' }, [
+            '当前浏览器页面已打开 ',
+            h('strong', null, currentHostname.value),
+            '，与您输入的 ',
+            h('strong', null, wegentUrlObj.hostname),
+            ' 不一致。',
+          ]),
+          h('p', { style: 'margin: 0; color: #666;' },
+            '请修改输入地址与当前页面保持一致，或关闭当前 wegent 页面后再重试。'
+          ),
+        ]),
+        positiveText: '知道了',
+      });
+      return;
+    }
+
+    // ── 异步操作阶段，启动 loading ──
     isAutoConfiguring.value = true;
     message.value = '正在自动配置...';
 
     try {
-      // 用字符串分割处理 # 分隔符（new URL() 会把 # 后的内容当 hash 而非独立 URL）
-      const hashIdx = rawInput.indexOf('#');
-      const wegentRaw = hashIdx !== -1 ? rawInput.slice(0, hashIdx) : rawInput;
-      const subscriptionRaw = hashIdx !== -1 ? rawInput.slice(hashIdx + 1).trim() : '';
-
-      // 校验 wegentUrl 合法性
-      let wegentUrlObj: URL;
-      try {
-        wegentUrlObj = new URL(wegentRaw);
-      } catch {
-        throw new Error('URL 格式无效，请输入以 https:// 或 http:// 开头的地址');
-      }
-      if (!wegentUrlObj.hostname.startsWith('wegent.')) {
-        throw new Error('请输入 wegent.* 域名的地址（例如 https://wegent.xxx.com）');
-      }
-
       // ── 步骤①：处理订阅 URL（如果 # 后有内容）──
       if (subscriptionRaw) {
         let subUrlObj: URL;
@@ -169,13 +193,28 @@ const handleAutoConfig = async () => {
 
   // ── 情况二：URL 为空，依赖当前 Tab 所在域名 ──
   if (!isWegentDomain.value) {
-    // 不在 wegent.* 域名下，显示内联引导提示
-    showAutoConfigHint.value = true;
+    // 不在 wegent.* 域名下，弹出引导对话框
+    dialog.info({
+      title: '如何使用自动配置',
+      content: () => h('div', { style: 'font-size: 13px; line-height: 1.8;' }, [
+        h('p', { style: 'margin: 0 0 8px;' }, '满足以下任一条件即可：'),
+        h('ol', { style: 'margin: 0; padding-left: 18px;' }, [
+          h('li', null, [
+            '在上方 ', h('strong', null, 'URL'), ' 输入框填写 wegent 应用地址，然后重新点击「自动配置」',
+            h('p', { style: 'font-size: 12px; color: #999; margin: 2px 0 6px;' }, '例如：https://wegent.xxx.com'),
+          ]),
+          h('li', null, [
+            '在浏览器地址栏打开 wegent 应用页面，然后重新点击「自动配置」',
+            h('p', { style: 'font-size: 12px; color: #999; margin: 2px 0 0;' }, '在地址栏访问您的 wegent 应用网址即可'),
+          ]),
+        ]),
+      ]),
+      positiveText: '知道了',
+    });
     return;
   }
 
   // 当前 Tab 在 wegent.* 域名，走原有逻辑
-  showAutoConfigHint.value = false;
   isAutoConfiguring.value = true;
   message.value = '正在自动配置...';
 
@@ -296,34 +335,6 @@ onMounted(async () => {
             >
               保存
             </NButton>
-
-            <!-- 自动配置前置引导提示：URL 为空且不在 wegent.* 域名时展示 -->
-            <NAlert
-              v-if="showAutoConfigHint"
-              type="info"
-              :bordered="false"
-              closable
-              style="font-size: 13px;"
-              @close="showAutoConfigHint = false"
-            >
-              <template #header>
-                <NText strong>使用「自动配置」，请先完成以下任一操作：</NText>
-              </template>
-              <ol style="margin: 6px 0 2px; padding-left: 18px; line-height: 2;">
-                <li>
-                  在上方 <NText strong>URL</NText> 输入框填写 wegent 应用地址，然后重新点击「自动配置」
-                  <NText depth="3" style="display: block; font-size: 12px; line-height: 1.6;">
-                    例如：https://wegent.xxx.com
-                  </NText>
-                </li>
-                <li>
-                  在浏览器地址栏打开 wegent 应用页面，然后重新点击「自动配置」
-                  <NText depth="3" style="display: block; font-size: 12px; line-height: 1.6;">
-                    在地址栏访问您的 wegent 应用网址即可
-                  </NText>
-                </li>
-              </ol>
-            </NAlert>
 
             <!-- 在 wegent.* 域名但未授权时的提示 -->
             <NText
