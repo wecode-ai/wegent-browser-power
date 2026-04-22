@@ -78,9 +78,25 @@ export default defineBackground(() => {
   }
 
   // 在后台静默拉取订阅配置（不要求成功）
+  // onStartup 无用户手势，无法调用 permissions.request()
+  // 需先用 permissions.contains() 确认用户已在 Options 页授权，否则跳过
   async function fetchSubscriptionConfig() {
     const url = await getSubscriptionUrl();
     if (!url) return;
+
+    try {
+      const urlObj = new URL(url);
+      const origin = `${urlObj.protocol}//${urlObj.host}/*`;
+      const hasPermission = await browser.permissions.contains({ origins: [origin] });
+      if (!hasPermission) {
+        console.log('订阅URL尚未获得访问授权，跳过自动拉取:', origin);
+        return;
+      }
+    } catch (error) {
+      console.error('检查订阅URL权限失败:', error);
+      return;
+    }
+
     await handleFetchSubscription(url);
   }
 

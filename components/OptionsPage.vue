@@ -88,6 +88,33 @@ const handleSubmit = async () => {
     return;
   }
 
+  // 同步提取订阅 URL（必须在任何 await 之前完成，保持用户手势上下文）
+  const subUrl = subscriptionUrl.value.trim();
+
+  // 若填写了订阅 URL，立即申请对应域名的访问权限
+  // permissions.request() 必须是第一个 await，Chrome 才能识别用户手势并弹出授权弹框
+  if (subUrl) {
+    let origin: string;
+    try {
+      const urlObj = new URL(subUrl);
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        configMessage.value = '订阅URL仅支持 http 或 https 协议';
+        return;
+      }
+      origin = `${urlObj.protocol}//${urlObj.host}/*`;
+    } catch {
+      configMessage.value = '订阅URL格式无效，请检查后重试';
+      return;
+    }
+
+    // ⚠️ 此处是整个函数的第一个 await，Chrome 的用户手势上下文仍然有效
+    const granted = await browser.permissions.request({ origins: [origin] });
+    if (!granted) {
+      // 用户点了"拒绝"，提示但仍继续保存基础配置
+      message.warning('已拒绝访问权限，订阅配置将无法拉取，基础配置仍会保存');
+    }
+  }
+
   try {
     await saveConfig({
       wegent_url: url.value,
@@ -95,12 +122,11 @@ const handleSubmit = async () => {
     });
 
     // 同步保存订阅 URL
-    await saveSubscriptionUrl(subscriptionUrl.value.trim());
+    await saveSubscriptionUrl(subUrl);
 
     configMessage.value = '保存成功';
 
-    // 如果填写了订阅 URL，立即拉取一次
-    const subUrl = subscriptionUrl.value.trim();
+    // 权限已申请，立即拉取一次订阅配置
     if (subUrl) {
       const ok = await fetchSubscription(subUrl);
       if (ok) {
