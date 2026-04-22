@@ -254,7 +254,7 @@ onUnmounted(() => {
             <NAlert
               v-if="isSubscriptionInsecure"
               type="warning"
-              title="订阅地址使用 http，配置内容将通过未加密连接传输，存在安全风险"
+              title="订阅地址使用http，配置内容将通过未加密连接传输，存在安全风险！建议用https"
               description="建议将地址改为 https://，也可忽略此提示并直接保存。"
             />
 
