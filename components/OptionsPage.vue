@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   NCard,
   NForm,
@@ -21,6 +21,7 @@ import {
   resetAIMixConfig,
   loadDefaultAIMixConfig,
   applySubscriptionData,
+  AI_MIX_CONFIG_KEY,
   type AIMixConfig,
 } from '@/services/config';
 
@@ -183,6 +184,28 @@ const handleReset = async () => {
 };
 
 onMounted(loadConfig);
+
+// 监听 background onStartup 拉取后 storage 的变化
+// 解决竞态：用户打开页面时 onStartup fetch 可能尚未完成，
+// fetch 完成写入 storage 后，此监听器自动刷新 AI Mix 配置展示
+const onStorageChanged = (
+  changes: Record<string, browser.storage.StorageChange>,
+  area: string
+) => {
+  if (area === 'local' && AI_MIX_CONFIG_KEY in changes) {
+    getAIMixConfig().then(config => {
+      aiMixJson.value = JSON.stringify(config, null, 2);
+    });
+  }
+};
+
+onMounted(() => {
+  browser.storage.onChanged.addListener(onStorageChanged);
+});
+
+onUnmounted(() => {
+  browser.storage.onChanged.removeListener(onStorageChanged);
+});
 </script>
 
 <template>
