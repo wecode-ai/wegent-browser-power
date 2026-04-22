@@ -121,33 +121,3 @@ Prompt templates use `{variableName}` syntax for substitution with business data
 ## UI Development Guidelines
 
 **Prefer built-in Naive UI component props over custom CSS.** Custom CSS in `<style scoped>` should only be used when no built-in component or prop can achieve the desired result.
-
-### Examples
-
-Use Naive UI component props for styling instead of writing CSS classes:
-
-```vue
-<!-- ✅ 推荐：用 NButton tag="a" 实现可点击链接，无需任何 CSS -->
-<NButton
-  tag="a"
-  href="https://example.com"
-  target="_blank"
-  rel="noopener noreferrer"
-  circle
-  size="tiny"
-  type="info"
-  title="查看帮助文档"
->?</NButton>
-
-<!-- ❌ 避免：为链接按钮写自定义 CSS -->
-<span class="help-icon" @click="openLink">?</span>
-<style scoped>
-.help-icon { cursor: pointer; color: blue; ... }
-</style>
-```
-
-Other useful patterns:
-- Use `NSpace` with `align` / `size` props for layout instead of flexbox CSS
-- Use `NText` with `strong` / `type` / `depth` props for typography
-- Use `NAlert` with `type` prop (`success` / `warning` / `error` / `info`) for status messages
-- Use `NButton` with `block`, `size`, `type`, `circle`, `tag` props to cover most button variants
