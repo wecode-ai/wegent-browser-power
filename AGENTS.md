@@ -117,3 +117,7 @@ Prompt templates use `{variableName}` syntax for substitution with business data
 - **Security**: API keys are encrypted at rest using the extension's unique ID as the encryption key
 - **Permissions**: The extension requires optional host permissions for `https://*/*` to work across different GitLab/Jira instances
 - **Type paths**: WXT provides path aliases `@/` and `~/` pointing to the project root
+
+## UI Development Guidelines
+
+**Prefer built-in Naive UI component props over custom CSS.** Custom CSS in `<style scoped>` should only be used when no built-in component or prop can achieve the desired result.

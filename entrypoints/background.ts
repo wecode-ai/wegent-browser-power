@@ -1,16 +1,54 @@
-import { saveConfig } from '@/services/config';
+import { saveConfig, getSubscriptionUrl, applySubscriptionData, type AIMixConfig } from '@/services/config';
+
+/** 订阅配置定时轮询的 Alarm 名称 */
+const SUBSCRIPTION_ALARM_NAME = 'subscription-config-sync';
+
+/** 轮询间隔（分钟），6 小时 */
+const SUBSCRIPTION_ALARM_INTERVAL_MINUTES = 6 * 60;
 
 export default defineBackground(() => {
   console.log('Hello background!', { id: browser.runtime.id });
-  
+
+  // 注册/恢复定时轮询 Alarm
+  // Alarm 在 Service Worker 休眠期间由系统维护，唤醒后自动触发
+  const ensureAlarm = async () => {
+    const existing = await browser.alarms.get(SUBSCRIPTION_ALARM_NAME);
+    if (!existing) {
+      browser.alarms.create(SUBSCRIPTION_ALARM_NAME, {
+        periodInMinutes: SUBSCRIPTION_ALARM_INTERVAL_MINUTES,
+      });
+      console.log(`订阅轮询 Alarm 已注册，间隔 ${SUBSCRIPTION_ALARM_INTERVAL_MINUTES} 分钟`);
+    }
+  };
+
   // 监听扩展安装或更新事件
   browser.runtime.onInstalled.addListener(() => {
     console.log('Extension installed or updated');
+    ensureAlarm();
+    // 安装/更新时立即拉取一次，确保第一次使用即最新配置
+    fetchSubscriptionConfig().catch(err =>
+      console.error('安装/更新时拉取订阅配置失败:', err)
+    );
   });
 
   // 监听扩展启动事件
   browser.runtime.onStartup.addListener(() => {
     console.log('Extension started');
+    ensureAlarm();
+    // 浏览器启动时自动拉取订阅配置
+    fetchSubscriptionConfig().catch(err =>
+      console.error('启动时拉取订阅配置失败:', err)
+    );
+  });
+
+  // 监听定时 Alarm，触发订阅配置轮询
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === SUBSCRIPTION_ALARM_NAME) {
+      console.log('定时轮询触发，开始拉取订阅配置');
+      fetchSubscriptionConfig().catch(err =>
+        console.error('定时轮询拉取订阅配置失败:', err)
+      );
+    }
   });
 
   // 监听来自 popup 的消息
@@ -28,6 +66,12 @@ export default defineBackground(() => {
       return true; // 保持消息通道开放以支持异步响应
     }
 
+    // 拉取订阅 URL 并更新 AI Mix 配置
+    if (message.action === 'fetchSubscription') {
+      handleFetchSubscription(message.url).then(sendResponse);
+      return true;
+    }
+
     // 启动钉钉Markdown下载监听事件
     if (message.action === 'waitForDingMarkdownDownload') {
       handleDingMarkdownDownload(message.origin).then(sendResponse);
@@ -40,6 +84,63 @@ export default defineBackground(() => {
       return true; // 保持消息通道开放以支持异步响应
     }
   });
+
+  // 从订阅 URL 拉取并应用 AI Mix 配置
+  // Background Service Worker 拥有扩展 Host Permission，fetch 不受目标服务器 CORS 限制
+  async function handleFetchSubscription(url: string) {
+    try {
+      console.log('开始拉取订阅配置:', url);
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-cache',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = (await response.json()) as AIMixConfig;
+      // 简单校验：至少包含一个已知平台字段
+      if (!data || (!data.dingTalk && !data.gitLab && !data.jira)) {
+        throw new Error('订阅数据格式错误：缺少 dingTalk / gitLab / jira 字段');
+      }
+      await applySubscriptionData(data);
+      console.log('订阅配置已更新');
+      return { success: true };
+    } catch (error) {
+      console.error('拉取订阅配置失败:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  // 在后台静默拉取订阅配置（不要求成功）
+  // onStartup 无用户手势，无法调用 permissions.request()
+  // 需先用 permissions.contains() 确认用户已在 Options 页授权，否则跳过
+  async function fetchSubscriptionConfig() {
+    const url = await getSubscriptionUrl();
+    if (!url) {
+      console.log('未配置订阅 URL，跳过更新');
+      return;
+    }
+
+    try {
+      const urlObj = new URL(url);
+      const origin = `${urlObj.protocol}//${urlObj.host}/*`;
+      const hasPermission = await browser.permissions.contains({ origins: [origin] });
+      if (!hasPermission) {
+        console.log('订阅URL尚未获得访问授权，跳过自动拉取:', origin);
+        return;
+      }
+    } catch (error) {
+      console.error('检查订阅URL权限失败:', error);
+      return;
+    }
+
+    await handleFetchSubscription(url);
+  }
 
   // 自动配置函数
   async function handleAutoConfig(currentUrl: string) {

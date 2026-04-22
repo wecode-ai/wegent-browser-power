@@ -17,6 +17,8 @@ export interface ExtensionConfig {
   wegent_api_key?: string;
   /** API 密钥是否已加密（用于兼容旧版数据） */
   wegent_api_key_encrypted?: boolean;
+  /** AI Mix 配置订阅 URL，填写后 AI Mix 配置由远程管理，本地不可手动编辑 */
+  subscription_url?: string;
 }
 
 /**
@@ -316,4 +318,41 @@ export async function resetAIMixConfig(): Promise<void> {
     console.error('重置 AI Mix 配置失败:', error);
     throw error;
   }
+}
+
+/**
+ * 获取订阅 URL
+ */
+export async function getSubscriptionUrl(): Promise<string> {
+  const config = await getConfig();
+  return config.subscription_url || '';
+}
+
+/**
+ * 保存订阅 URL
+ */
+export async function saveSubscriptionUrl(url: string): Promise<void> {
+  try {
+    const rawData = await browser.storage.local.get(STORAGE_KEY) as {
+      [STORAGE_KEY]?: ExtensionConfig;
+    };
+    const rawConfig = rawData[STORAGE_KEY] || {};
+    await browser.storage.local.set({
+      [STORAGE_KEY]: { ...rawConfig, subscription_url: url },
+    });
+  } catch (error) {
+    console.error('保存订阅 URL 失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 将从订阅 URL 获取到的数据写入 AI Mix 配置（完整替换）
+ */
+export async function applySubscriptionData(data: AIMixConfig): Promise<void> {
+  const config: AIMixStorageConfig = {};
+  if (data.dingTalk?.actions) config.dingTalk = { actions: data.dingTalk.actions };
+  if (data.gitLab?.actions) config.gitLab = { actions: data.gitLab.actions };
+  if (data.jira?.actions) config.jira = { actions: data.jira.actions };
+  await saveAIMixConfig(config);
 }
