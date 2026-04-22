@@ -44,6 +44,14 @@ const importMode = ref<'merge' | 'replace'>('merge');
 // 当填写了订阅 URL 时，JSON 编辑器只读
 const isAiMixReadonly = computed(() => !!subscriptionUrl.value.trim());
 
+// 订阅 URL 使用 http 时提示安全风险（用户仍可强制保存）
+const isSubscriptionInsecure = computed(() =>
+  subscriptionUrl.value.trim().toLowerCase().startsWith('http://')
+);
+
+/** AI Mix 帮助文档链接 */
+const AI_MIX_HELP_URL = 'https://github.com/wecode-ai/wegent-browser-power/wiki/%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8';
+
 // 加载配置
 const loadConfig = async () => {
   // 加载原有配置
@@ -242,6 +250,14 @@ onUnmounted(() => {
               />
             </NFormItem>
 
+            <!-- http 不安全提示：用户可忽略，仍可保存 -->
+            <NAlert
+              v-if="isSubscriptionInsecure"
+              type="warning"
+              title="订阅地址使用 http，配置内容将通过未加密连接传输，存在安全风险"
+              description="建议将地址改为 https://，也可忽略此提示并直接保存。"
+            />
+
             <NButton
               type="primary"
               size="large"
@@ -262,7 +278,16 @@ onUnmounted(() => {
         <NDivider />
 
         <!-- AI Mix 配置管理 -->
-        <NText strong>AI Mix 配置管理</NText>
+        <NSpace align="center" :size="6">
+          <NText strong>AI Mix 配置管理</NText>
+          <NButton
+            circle
+            size="tiny"
+            type="info"
+            title="查看帮助文档"
+            @click="() => window.open(AI_MIX_HELP_URL, '_blank')"
+          >?</NButton>
+        </NSpace>
 
         <!-- 订阅模式提示 -->
         <NAlert
