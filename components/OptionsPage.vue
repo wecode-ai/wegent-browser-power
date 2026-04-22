@@ -68,7 +68,12 @@ const fetchSubscription = async (subUrl: string): Promise<boolean> => {
   try {
     const response = await fetch(subUrl, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      cache: 'no-cache',
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
