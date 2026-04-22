@@ -285,7 +285,7 @@ onUnmounted(() => {
             size="tiny"
             type="info"
             title="查看帮助文档"
-            @click="() => window.open(AI_MIX_HELP_URL, '_blank')"
+            @click="() => browser.tabs.create({ url: AI_MIX_HELP_URL })"
           >?</NButton>
         </NSpace>
 
