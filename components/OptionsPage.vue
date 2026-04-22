@@ -98,8 +98,6 @@ const handleSubmit = async () => {
     await saveSubscriptionUrl(subscriptionUrl.value.trim());
 
     configMessage.value = '保存成功';
-    url.value = '';
-    apiKey.value = '';
 
     // 如果填写了订阅 URL，立即拉取一次
     const subUrl = subscriptionUrl.value.trim();
