@@ -280,13 +280,16 @@ onUnmounted(() => {
         <!-- AI Mix 配置管理 -->
         <NSpace align="center" :size="6">
           <NText strong>AI Mix 配置管理</NText>
-          <a
+          <NButton
+            tag="a"
             :href="AI_MIX_HELP_URL"
             target="_blank"
             rel="noopener noreferrer"
+            circle
+            size="tiny"
+            type="info"
             title="查看帮助文档"
-            class="help-icon"
-          >?</a>
+          >?</NButton>
         </NSpace>
 
         <!-- 订阅模式提示 -->
@@ -348,25 +351,5 @@ onUnmounted(() => {
 .options-container :deep(.n-card) {
   width: 100%;
   max-width: 800px;
-}
-
-.help-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background-color: #2080f0;
-  color: #fff;
-  font-size: 12px;
-  font-weight: bold;
-  text-decoration: none;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.help-icon:hover {
-  background-color: #4098fc;
 }
 </style>
