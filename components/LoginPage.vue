@@ -11,7 +11,13 @@ import {
   NText,
   useDialog,
 } from 'naive-ui';
-import { getConfig, saveConfig, saveSubscriptionUrl } from '@/services/config';
+import {
+  getConfig,
+  saveConfig,
+  saveSubscriptionUrl,
+  PENDING_AUTO_CONFIG_KEY,
+  type PendingAutoConfig,
+} from '@/services/config';
 
 const dialog = useDialog();
 
@@ -156,7 +162,26 @@ const handleAutoConfig = async () => {
         message.value = missingOrigins.length > 1
           ? `正在请求访问权限（${missingOrigins.length} 个域名）...`
           : '正在请求访问权限...';
-        const granted = await browser.permissions.request({ origins: missingOrigins });
+
+        // 在调用 permissions.request() 前写入挂起状态。
+        // 若授权弹框导致 popup 关闭，background 的 permissions.onAdded 监听器会在
+        // 300ms 后读取此状态并接力执行；若 popup 存活，finally 块会先清除它。
+        await browser.storage.session.set({
+          [PENDING_AUTO_CONFIG_KEY]: {
+            wegentUrl: `${wegentUrlObj.protocol}//${wegentUrlObj.host}`,
+            subscriptionUrl: subscriptionRaw,
+            timestamp: Date.now(),
+          } as PendingAutoConfig,
+        });
+
+        let granted: boolean;
+        try {
+          granted = await browser.permissions.request({ origins: missingOrigins });
+        } finally {
+          // popup 执行到此说明仍存活，清除挂起状态以防 background 重复执行
+          await browser.storage.session.remove(PENDING_AUTO_CONFIG_KEY);
+        }
+
         if (!granted) {
           if (!wegentAlreadyGranted) {
             // wegent 域名权限被拒，无法继续

@@ -89,6 +89,33 @@ export const STORAGE_KEY = 'extension_config';
 export const AI_MIX_CONFIG_KEY = 'ai_mix_config';
 
 /**
+ * 挂起的自动配置任务存储 key（存于 storage.session，浏览器关闭后自动清除）
+ *
+ * 用途：popup 在调用 permissions.request() 前写入任务参数，
+ * 若授权弹框导致 popup 关闭，background 通过 permissions.onAdded 读取并接力执行。
+ * popup 存活时在 finally 中负责清除，防止 background 重复执行。
+ */
+export const PENDING_AUTO_CONFIG_KEY = 'pending_auto_config';
+
+/**
+ * 挂起的自动配置任务的数据结构
+ */
+export interface PendingAutoConfig {
+  /** wegent 应用根地址，如 https://wegent.xxx.com */
+  wegentUrl: string;
+  /** 订阅 URL（可选），如 https://xxx.com/subscribe.json；无则为空字符串 */
+  subscriptionUrl: string;
+  /** 任务创建时间戳（ms），超过有效期后 background 将忽略该任务 */
+  timestamp: number;
+}
+
+/**
+ * 挂起任务的最长有效期（5 分钟）
+ * 超出后视为用户已取消授权，background 不再接力执行
+ */
+export const PENDING_AUTO_CONFIG_EXPIRY_MS = 5 * 60 * 1000;
+
+/**
  * 保存配置到本地存储
  * API 密钥会被加密存储
  * @param config 配置对象
