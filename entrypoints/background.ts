@@ -82,7 +82,10 @@ export default defineBackground(() => {
   // 需先用 permissions.contains() 确认用户已在 Options 页授权，否则跳过
   async function fetchSubscriptionConfig() {
     const url = await getSubscriptionUrl();
-    if (!url) return;
+    if (!url) {
+      console.log('未配置订阅 URL，跳过更新');
+      return;
+    }
 
     try {
       const urlObj = new URL(url);

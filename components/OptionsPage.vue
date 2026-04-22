@@ -20,6 +20,7 @@ import {
   importAIMixConfig,
   resetAIMixConfig,
   loadDefaultAIMixConfig,
+  applySubscriptionData,
   type AIMixConfig,
 } from '@/services/config';
 
@@ -57,18 +58,27 @@ const loadConfig = async () => {
   aiMixJson.value = JSON.stringify(aiMixConfig, null, 2);
 };
 
-// 拉取订阅配置（通过 background script 绕过 CORS）
+// 拉取订阅配置
+// 直接在 Options 页面（扩展页）发起 fetch：
+// permissions.request() 在此页面授权后立即生效，无需等待 Service Worker 同步权限
+// 避免了 Chrome MV3 中权限刚授予但 Service Worker 尚未感知的竞态问题
 const fetchSubscription = async (subUrl: string): Promise<boolean> => {
   subscriptionStatus.value = 'loading';
   subscriptionError.value = '';
   try {
-    const resp = await browser.runtime.sendMessage({
-      action: 'fetchSubscription',
-      url: subUrl,
-    }) as { success: boolean; error?: string };
-    if (!resp.success) {
-      throw new Error(resp.error || '未知错误');
+    const response = await fetch(subUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+    const data = (await response.json()) as AIMixConfig;
+    // 简单校验：至少包含一个已知平台字段
+    if (!data || (!data.dingTalk && !data.gitLab && !data.jira)) {
+      throw new Error('订阅数据格式错误：缺少 dingTalk / gitLab / jira 字段');
+    }
+    await applySubscriptionData(data);
     subscriptionStatus.value = 'success';
     // 重新加载 AI Mix 配置展示
     const aiMixConfig = await getAIMixConfig();
