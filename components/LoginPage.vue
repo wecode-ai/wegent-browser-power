@@ -122,9 +122,13 @@ const handleAutoConfig = async () => {
     message.value = '正在自动配置...';
 
     try {
-      // ── 步骤①：处理订阅 URL（如果 # 后有内容）──
+      const wegentOrigin = `${wegentUrlObj.protocol}//${wegentUrlObj.host}/*`;
+
+      // ── 步骤①：解析订阅 URL（如果 # 后有内容），收集所需权限 ──
+      // 先解析订阅URL对象，以便后续判断是否与wegent同域
+      let subUrlObj: URL | null = null;
+      let subOrigin = '';
       if (subscriptionRaw) {
-        let subUrlObj: URL;
         try {
           subUrlObj = new URL(subscriptionRaw);
         } catch {
@@ -133,38 +137,52 @@ const handleAutoConfig = async () => {
         if (subUrlObj.protocol !== 'http:' && subUrlObj.protocol !== 'https:') {
           throw new Error('订阅 URL 仅支持 http 或 https 协议');
         }
+        subOrigin = `${subUrlObj.protocol}//${subUrlObj.host}/*`;
+      }
 
-        // 请求订阅 URL 所在域名的权限
-        message.value = '正在请求订阅 URL 访问权限...';
-        const subOrigin = `${subUrlObj.protocol}//${subUrlObj.host}/*`;
-        const subGranted = await ensurePermission(subOrigin);
-        if (!subGranted) {
-          // 与 OptionsPage 行为一致：拒绝权限时警告但不中断主流程
+      // ── 步骤②：一次性批量申请所有缺失权限 ──
+      // 收集尚未授权的 origin，两个域名不同时合并进同一个 permissions.request 调用
+      const missingOrigins: string[] = [];
+      const wegentAlreadyGranted = await browser.permissions.contains({ origins: [wegentOrigin] });
+      if (!wegentAlreadyGranted) missingOrigins.push(wegentOrigin);
+
+      let subAlreadyGranted = true;
+      if (subOrigin && subOrigin !== wegentOrigin) {
+        subAlreadyGranted = await browser.permissions.contains({ origins: [subOrigin] });
+        if (!subAlreadyGranted) missingOrigins.push(subOrigin);
+      }
+
+      if (missingOrigins.length > 0) {
+        message.value = missingOrigins.length > 1
+          ? `正在请求访问权限（${missingOrigins.length} 个域名）...`
+          : '正在请求访问权限...';
+        const granted = await browser.permissions.request({ origins: missingOrigins });
+        if (!granted) {
+          if (!wegentAlreadyGranted) {
+            // wegent 域名权限被拒，无法继续
+            throw new Error('用户拒绝了 wegent 域名的访问权限');
+          }
+          // 仅订阅 URL 权限被拒：非致命，跳过订阅，继续自动配置
           message.value = '已拒绝订阅 URL 访问权限，跳过订阅配置，继续执行自动配置...';
           await new Promise(r => setTimeout(r, 1200));
-        } else {
-          // 保存订阅 URL 并立即拉取
-          await saveSubscriptionUrl(subscriptionRaw);
-          message.value = '正在拉取订阅配置...';
-          const fetchResp = await browser.runtime.sendMessage({
-            action: 'fetchSubscription',
-            url: subscriptionRaw,
-          }) as { success: boolean; error?: string };
-          if (!fetchResp?.success) {
-            console.warn('订阅配置拉取失败:', fetchResp?.error);
-          }
+          subUrlObj = null;
         }
       }
 
-      // ── 步骤②：请求 wegent 域名权限 ──
-      const wegentOrigin = `${wegentUrlObj.protocol}//${wegentUrlObj.host}/*`;
-      message.value = '正在请求 wegent 域名访问权限...';
-      const wegentGranted = await ensurePermission(wegentOrigin);
-      if (!wegentGranted) {
-        throw new Error('用户拒绝了 wegent 域名的访问权限');
+      // ── 步骤③：拉取订阅配置（如果订阅 URL 有效且权限已获取）──
+      if (subUrlObj) {
+        await saveSubscriptionUrl(subscriptionRaw);
+        message.value = '正在拉取订阅配置...';
+        const fetchResp = await browser.runtime.sendMessage({
+          action: 'fetchSubscription',
+          url: subscriptionRaw,
+        }) as { success: boolean; error?: string };
+        if (!fetchResp?.success) {
+          console.warn('订阅配置拉取失败:', fetchResp?.error);
+        }
       }
 
-      // ── 步骤③：发送自动配置消息到 background ──
+      // ── 步骤④：发送自动配置消息到 background ──
       const wegentUrl = `${wegentUrlObj.protocol}//${wegentUrlObj.host}`;
       message.value = '正在自动配置...';
       const response = await browser.runtime.sendMessage({
