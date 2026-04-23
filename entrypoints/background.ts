@@ -1,4 +1,13 @@
-import { saveConfig, getSubscriptionUrl, applySubscriptionData, type AIMixConfig } from '@/services/config';
+import {
+  saveConfig,
+  saveSubscriptionUrl,
+  getSubscriptionUrl,
+  applySubscriptionData,
+  type AIMixConfig,
+  PENDING_AUTO_CONFIG_KEY,
+  PENDING_AUTO_CONFIG_EXPIRY_MS,
+  type PendingAutoConfig,
+} from '@/services/config';
 
 /** 订阅配置定时轮询的 Alarm 名称 */
 const SUBSCRIPTION_ALARM_NAME = 'subscription-config-sync';
@@ -51,6 +60,17 @@ export default defineBackground(() => {
     }
   });
 
+  // 监听权限授予事件：在 popup 因授权弹框关闭时接力执行挂起的自动配置任务
+  // 延迟 300ms 读取：若 popup 仍存活，其 finally 块会先清除挂起任务；
+  // 若 popup 已关闭，300ms 后挂起任务依然存在，background 接力执行。
+  browser.permissions.onAdded.addListener(() => {
+    setTimeout(() => {
+      resumePendingAutoConfig().catch(err =>
+        console.error('接力执行自动配置失败:', err)
+      );
+    }, 300);
+  });
+
   // 监听来自 popup 的消息
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 验证发送者是扩展自身，防止恶意内容脚本或第三方扩展发送伪造消息
@@ -84,6 +104,71 @@ export default defineBackground(() => {
       return true; // 保持消息通道开放以支持异步响应
     }
   });
+
+  // 接力执行因 popup 关闭而中断的自动配置任务
+  // 由 permissions.onAdded 触发，读取 storage.session 中的挂起任务并执行
+  async function resumePendingAutoConfig() {
+    const data = await browser.storage.session.get(PENDING_AUTO_CONFIG_KEY) as {
+      [PENDING_AUTO_CONFIG_KEY]?: PendingAutoConfig;
+    };
+    const pending = data[PENDING_AUTO_CONFIG_KEY];
+
+    if (!pending) {
+      // popup 仍存活且已清除挂起任务，无需接力
+      console.log('无挂起的自动配置任务（popup 已自行处理）');
+      return;
+    }
+
+    // 过期校验：超过 5 分钟视为用户已取消，不再执行
+    if (Date.now() - pending.timestamp > PENDING_AUTO_CONFIG_EXPIRY_MS) {
+      console.warn('挂起的自动配置任务已过期，清除');
+      await browser.storage.session.remove(PENDING_AUTO_CONFIG_KEY);
+      return;
+    }
+
+    // 立即清除，防止 onAdded 多次触发时重复执行
+    await browser.storage.session.remove(PENDING_AUTO_CONFIG_KEY);
+
+    const { wegentUrl, subscriptionUrl } = pending;
+    console.log('接力执行自动配置，目标:', wegentUrl);
+
+    // 验证 wegent 域名权限是否确实已授予
+    const wegentUrlObj = new URL(wegentUrl);
+    const wegentOrigin = `${wegentUrlObj.protocol}//${wegentUrlObj.host}/*`;
+    const wegentGranted = await browser.permissions.contains({ origins: [wegentOrigin] });
+    if (!wegentGranted) {
+      // 用户拒绝了 wegent 域名权限，无法继续
+      console.error('wegent 域名权限未获取，终止接力执行:', wegentOrigin);
+      await browser.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon/128.png',
+        title: '自动配置失败',
+        message: `未获得 ${wegentUrlObj.host} 的访问权限，请重新点击「自动配置」`,
+      });
+      return;
+    }
+
+    // 处理订阅 URL（若有）：检查权限已授予后再保存和拉取
+    if (subscriptionUrl) {
+      try {
+        const subUrlObj = new URL(subscriptionUrl);
+        const subOrigin = `${subUrlObj.protocol}//${subUrlObj.host}/*`;
+        const subGranted = await browser.permissions.contains({ origins: [subOrigin] });
+        if (subGranted) {
+          await saveSubscriptionUrl(subscriptionUrl);
+          await handleFetchSubscription(subscriptionUrl);
+        } else {
+          console.log('订阅 URL 权限未获取，跳过订阅配置:', subOrigin);
+        }
+      } catch (err) {
+        // 订阅失败不阻断主流程
+        console.warn('处理订阅 URL 失败，继续执行自动配置:', err);
+      }
+    }
+
+    // 执行核心自动配置
+    await handleAutoConfig(wegentUrl);
+  }
 
   // 从订阅 URL 拉取并应用 AI Mix 配置
   // Background Service Worker 拥有扩展 Host Permission，fetch 不受目标服务器 CORS 限制
