@@ -140,7 +140,9 @@ const handleConfirmSubmit = async () => {
 
     const wegentBaseUrl = (wegentApi as any)['baseUrl'];
     const taskId = apiResponse.id.replace('resp_', '');
-    const chatUrl = `${wegentBaseUrl}/chat?taskId=${taskId}`;
+    const hasCodeBot = resolvedAiConfig.value.tools?.some((t) => t.type === 'wegent_code_bot');
+    const targetPath = hasCodeBot ? 'code' : 'chat';
+    const chatUrl = `${wegentBaseUrl}/${targetPath}?taskId=${taskId}`;
 
     message.success('AI 任务已创建！');
     console.log('任务已创建，ID:', apiResponse.id);
