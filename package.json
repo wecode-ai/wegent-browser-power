@@ -2,7 +2,7 @@
   "name": "Wegent Browser Power",
   "description": "AI power for devs & PMs. Seamlessly integrates Wegent AI into GitLab, Jira, and DingTalk to streamline your entire R&D workflow.",
   "private": true,
-  "version": "1.0.20",
+  "version": "1.0.21",
   "type": "module",
   "scripts": {
     "dev": "wxt",
