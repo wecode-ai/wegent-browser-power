@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
-import { NCard, NSpace, NText } from 'naive-ui';
+import { NCard, NSpace, NText, useMessage } from 'naive-ui';
 import AIMix from './include/AIMix.vue';
 import { getAIMixConfig } from '../services/config';
 import type { AIMixActionItem } from '../services/config';
 
+const message = useMessage();
 const isDingTalkDoc = ref(false);
 
 // AI 操作配置数组（动态加载）
@@ -34,6 +35,15 @@ const checkDingTalkDoc = async () => {
 };
 
 /**
+ * 显示错误提示
+ */
+const showError = (error: unknown) => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  message.error(errorMessage);
+  console.error('钉钉文档操作失败:', error);
+};
+
+/**
  * 获取钉钉文档 Markdown 内容
  * 封装：触发导出 → 监听下载 → 读取文件内容
  * 返回对象，key 对应 prompt 模板中的变量名 {content}
@@ -44,7 +54,9 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
       const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
 
       if (!activeTab || !activeTab.id) {
-        reject(new Error('无法获取当前标签页'));
+        const error = new Error('无法获取当前标签页');
+        showError(error);
+        reject(error);
         return;
       }
 
@@ -56,7 +68,9 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
       browser.runtime.sendMessage({ action: 'waitForDingMarkdownDownload', origin: pageOrigin }, async (response) => {
         console.log('下载对象:', response);
         if (!response?.success || !response?.downloadItem?.finalUrl) {
-          reject(new Error('未获取到下载文件'));
+          const error = new Error('未获取到下载文件');
+          showError(error);
+          reject(error);
           return;
         }
 
@@ -64,7 +78,9 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
           const res = await fetch(response.downloadItem.finalUrl);
 
           if (!res.ok) {
-            reject(new Error(`下载失败: ${res.status}`));
+            const error = new Error(`下载失败: ${res.status}`);
+            showError(error);
+            reject(error);
             return;
           }
 
@@ -73,6 +89,7 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
           console.log('Markdown 内容:', text);
           resolve({ content: text });
         } catch (error) {
+          showError(error);
           reject(error);
         }
       });
@@ -147,11 +164,14 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
         },
       });
 
-      // 检查脚本执行结果
+      // 检查脚本执行结果 - 如果页面内 Promise reject，结果会包含异常信息
       if (scriptResult?.error) {
-        throw new Error(scriptResult.error.message || '页面脚本执行失败');
+        const error = new Error(scriptResult.error.message || '页面脚本执行失败');
+        showError(error);
+        throw error;
       }
     } catch (error) {
+      showError(error);
       reject(error);
     }
   });
