@@ -87,6 +87,50 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
               const iframe = document.getElementById('wiki-doc-iframe') as HTMLIFrameElement;
               const targetDocument = (iframe && iframe.contentDocument) ? iframe.contentDocument : document;
 
+              // 处理导出按钮的函数
+              const handleExportButton = (exportButton: HTMLElement) => {
+                // 检测类名中是否包含以 -disabled 结尾的类名
+                const classList = Array.from(exportButton.classList);
+                const hasDisabledClass = classList.some(cls => cls.endsWith('-disabled'));
+
+                if (hasDisabledClass) {
+                  resolve({ success: false, error: '您没有当前文档的下载权限，请联系文档所有者申请"可查看/可下载"权限' });
+                  return;
+                }
+
+                // 有权限，继续导出流程
+                const rect = exportButton.getBoundingClientRect();
+                const events = ['pointerover', 'pointerenter', 'mouseover', 'mouseenter'];
+                events.forEach(type => {
+                  exportButton.dispatchEvent(new PointerEvent(type, {
+                    bubbles: true,
+                    cancelable: true,
+                    composed: true,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2,
+                    view: window,
+                  }));
+                });
+
+                setTimeout(() => {
+                  const exportMdButton = targetDocument.querySelector('[data-role="operationBar__export_exportAsMd"]');
+                  if (exportMdButton) {
+                    (exportMdButton as HTMLElement).click();
+                    resolve({ success: true });
+                  } else {
+                    resolve({ success: false, error: '未找到导出为 Markdown 按钮' });
+                  }
+                }, 500);
+              };
+
+              // 先检查导出按钮是否已可见（菜单已打开）
+              const existingExportButton = targetDocument.querySelector('[data-role="operationBar_export"]') as HTMLElement;
+              if (existingExportButton) {
+                // 菜单已打开，直接处理
+                handleExportButton(existingExportButton);
+                return;
+              }
+
               const headerButton = targetDocument.querySelector('button[data-role="headerMoreMenu"]');
               if (!headerButton) {
                 resolve({ success: false, error: '未找到 headerMoreMenu 按钮' });
@@ -102,41 +146,10 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
 
               const checkExportButton = () => {
                 attempts++;
-                const exportButton = targetDocument.querySelector('[data-role="operationBar_export"]');
+                const exportButton = targetDocument.querySelector('[data-role="operationBar_export"]') as HTMLElement;
 
                 if (exportButton) {
-                  // 检测类名中是否包含以 -disabled 结尾的类名
-                  const classList = Array.from(exportButton.classList);
-                  const hasDisabledClass = classList.some(cls => cls.endsWith('-disabled'));
-
-                  if (hasDisabledClass) {
-                    resolve({ success: false, error: '您没有当前文档的下载权限，请联系文档所有者申请"可查看/可下载"权限' });
-                    return;
-                  }
-
-                  // 有权限，继续导出流程
-                  const rect = (exportButton as HTMLElement).getBoundingClientRect();
-                  const events = ['pointerover', 'pointerenter', 'mouseover', 'mouseenter'];
-                  events.forEach(type => {
-                    (exportButton as HTMLElement).dispatchEvent(new PointerEvent(type, {
-                      bubbles: true,
-                      cancelable: true,
-                      composed: true,
-                      clientX: rect.left + rect.width / 2,
-                      clientY: rect.top + rect.height / 2,
-                      view: window,
-                    }));
-                  });
-
-                  setTimeout(() => {
-                    const exportMdButton = targetDocument.querySelector('[data-role="operationBar__export_exportAsMd"]');
-                    if (exportMdButton) {
-                      (exportMdButton as HTMLElement).click();
-                      resolve({ success: true });
-                    } else {
-                      resolve({ success: false, error: '未找到导出为 Markdown 按钮' });
-                    }
-                  }, 500);
+                  handleExportButton(exportButton);
                 } else if (attempts >= maxAttempts) {
                   resolve({ success: false, error: '查找导出按钮超时，最多尝试20次' });
                 } else {
