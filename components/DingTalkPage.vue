@@ -78,7 +78,7 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
       });
 
       // 在页面中执行导出操作
-      await browser.scripting.executeScript({
+      const [scriptResult] = await browser.scripting.executeScript({
         target: { tabId: activeTab.id },
         func: () => {
           return new Promise<void>((resolve, reject) => {
@@ -146,6 +146,11 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
           });
         },
       });
+
+      // 检查脚本执行结果
+      if (scriptResult?.error) {
+        throw new Error(scriptResult.error.message || '页面脚本执行失败');
+      }
     } catch (error) {
       reject(error);
     }
