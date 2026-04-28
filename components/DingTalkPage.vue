@@ -85,16 +85,14 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
             const iframe = document.getElementById('wiki-doc-iframe') as HTMLIFrameElement;
             const targetDocument = (iframe && iframe.contentDocument) ? iframe.contentDocument : document;
 
-            let exportButton = targetDocument.querySelector('[data-role="operationBar_export"]');
-
-            if (!exportButton) {
-              const headerButton = targetDocument.querySelector('button[data-role="headerMoreMenu"]');
-              if (!headerButton) {
-                reject(new Error('未找到 headerMoreMenu 按钮'));
-                return;
-              }
-              (headerButton as HTMLElement).click();
+            const headerButton = targetDocument.querySelector('button[data-role="headerMoreMenu"]');
+            if (!headerButton) {
+              reject(new Error('未找到 headerMoreMenu 按钮'));
+              return;
             }
+
+            // 点击菜单按钮展开选项
+            (headerButton as HTMLElement).click();
 
             let attempts = 0;
             const maxAttempts = 20;
@@ -102,8 +100,19 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
 
             const checkExportButton = () => {
               attempts++;
-              exportButton = targetDocument.querySelector('[data-role="operationBar_export"]');
+              const exportButton = targetDocument.querySelector('[data-role="operationBar_export"]');
+
               if (exportButton) {
+                // 检测类名中是否包含以 -disabled 结尾的类名
+                const classList = Array.from(exportButton.classList);
+                const hasDisabledClass = classList.some(cls => cls.endsWith('-disabled'));
+
+                if (hasDisabledClass) {
+                  reject(new Error('您没有当前文档的下载权限，请联系文档所有者申请"可查看/可下载"权限'));
+                  return;
+                }
+
+                // 有权限，继续导出流程
                 const rect = (exportButton as HTMLElement).getBoundingClientRect();
                 const events = ['pointerover', 'pointerenter', 'mouseover', 'mouseenter'];
                 events.forEach(type => {
