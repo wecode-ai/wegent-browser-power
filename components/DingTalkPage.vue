@@ -95,78 +95,88 @@ const getDingTalkMarkdown = (): Promise<Record<string, string>> => {
       });
 
       // 在页面中执行导出操作
-      const [scriptResult] = await browser.scripting.executeScript({
-        target: { tabId: activeTab.id },
-        func: () => {
-          return new Promise<void>((resolve, reject) => {
-            const iframe = document.getElementById('wiki-doc-iframe') as HTMLIFrameElement;
-            const targetDocument = (iframe && iframe.contentDocument) ? iframe.contentDocument : document;
+      let scriptResult;
+      try {
+        [scriptResult] = await browser.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          func: () => {
+            return new Promise<{ success: boolean; error?: string }>((resolve) => {
+              const iframe = document.getElementById('wiki-doc-iframe') as HTMLIFrameElement;
+              const targetDocument = (iframe && iframe.contentDocument) ? iframe.contentDocument : document;
 
-            const headerButton = targetDocument.querySelector('button[data-role="headerMoreMenu"]');
-            if (!headerButton) {
-              reject(new Error('未找到 headerMoreMenu 按钮'));
-              return;
-            }
-
-            // 点击菜单按钮展开选项
-            (headerButton as HTMLElement).click();
-
-            let attempts = 0;
-            const maxAttempts = 20;
-            const interval = 500;
-
-            const checkExportButton = () => {
-              attempts++;
-              const exportButton = targetDocument.querySelector('[data-role="operationBar_export"]');
-
-              if (exportButton) {
-                // 检测类名中是否包含以 -disabled 结尾的类名
-                const classList = Array.from(exportButton.classList);
-                const hasDisabledClass = classList.some(cls => cls.endsWith('-disabled'));
-
-                if (hasDisabledClass) {
-                  reject(new Error('您没有当前文档的下载权限，请联系文档所有者申请"可查看/可下载"权限'));
-                  return;
-                }
-
-                // 有权限，继续导出流程
-                const rect = (exportButton as HTMLElement).getBoundingClientRect();
-                const events = ['pointerover', 'pointerenter', 'mouseover', 'mouseenter'];
-                events.forEach(type => {
-                  (exportButton as HTMLElement).dispatchEvent(new PointerEvent(type, {
-                    bubbles: true,
-                    cancelable: true,
-                    composed: true,
-                    clientX: rect.left + rect.width / 2,
-                    clientY: rect.top + rect.height / 2,
-                    view: window,
-                  }));
-                });
-
-                setTimeout(() => {
-                  const exportMdButton = targetDocument.querySelector('[data-role="operationBar__export_exportAsMd"]');
-                  if (exportMdButton) {
-                    (exportMdButton as HTMLElement).click();
-                    resolve();
-                  } else {
-                    reject(new Error('未找到导出为 Markdown 按钮'));
-                  }
-                }, 500);
-              } else if (attempts >= maxAttempts) {
-                reject(new Error('查找导出按钮超时，最多尝试20次'));
-              } else {
-                setTimeout(checkExportButton, interval);
+              const headerButton = targetDocument.querySelector('button[data-role="headerMoreMenu"]');
+              if (!headerButton) {
+                resolve({ success: false, error: '未找到 headerMoreMenu 按钮' });
+                return;
               }
-            };
 
-            checkExportButton();
-          });
-        },
-      });
+              // 点击菜单按钮展开选项
+              (headerButton as HTMLElement).click();
 
-      // 检查脚本执行结果 - 如果页面内 Promise reject，结果会包含异常信息
-      if (scriptResult?.error) {
-        const error = new Error(scriptResult.error.message || '页面脚本执行失败');
+              let attempts = 0;
+              const maxAttempts = 20;
+              const interval = 500;
+
+              const checkExportButton = () => {
+                attempts++;
+                const exportButton = targetDocument.querySelector('[data-role="operationBar_export"]');
+
+                if (exportButton) {
+                  // 检测类名中是否包含以 -disabled 结尾的类名
+                  const classList = Array.from(exportButton.classList);
+                  const hasDisabledClass = classList.some(cls => cls.endsWith('-disabled'));
+
+                  if (hasDisabledClass) {
+                    resolve({ success: false, error: '您没有当前文档的下载权限，请联系文档所有者申请"可查看/可下载"权限' });
+                    return;
+                  }
+
+                  // 有权限，继续导出流程
+                  const rect = (exportButton as HTMLElement).getBoundingClientRect();
+                  const events = ['pointerover', 'pointerenter', 'mouseover', 'mouseenter'];
+                  events.forEach(type => {
+                    (exportButton as HTMLElement).dispatchEvent(new PointerEvent(type, {
+                      bubbles: true,
+                      cancelable: true,
+                      composed: true,
+                      clientX: rect.left + rect.width / 2,
+                      clientY: rect.top + rect.height / 2,
+                      view: window,
+                    }));
+                  });
+
+                  setTimeout(() => {
+                    const exportMdButton = targetDocument.querySelector('[data-role="operationBar__export_exportAsMd"]');
+                    if (exportMdButton) {
+                      (exportMdButton as HTMLElement).click();
+                      resolve({ success: true });
+                    } else {
+                      resolve({ success: false, error: '未找到导出为 Markdown 按钮' });
+                    }
+                  }, 500);
+                } else if (attempts >= maxAttempts) {
+                  resolve({ success: false, error: '查找导出按钮超时，最多尝试20次' });
+                } else {
+                  setTimeout(checkExportButton, interval);
+                }
+              };
+
+              checkExportButton();
+            });
+          },
+        });
+      } catch (execError) {
+        // executeScript 本身抛出异常
+        const errorMessage = execError instanceof Error ? execError.message : String(execError);
+        const error = new Error(`脚本执行异常: ${errorMessage}`);
+        showError(error);
+        throw error;
+      }
+
+      // 检查脚本执行结果
+      if (!scriptResult?.result?.success) {
+        const errorMessage = scriptResult?.result?.error || '页面脚本执行失败';
+        const error = new Error(errorMessage);
         showError(error);
         throw error;
       }
